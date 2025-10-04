@@ -5,6 +5,7 @@ dayjs.extend(utc);
 
 const Coupon = require("../models/Coupon");
 
+
 const addCoupon = async (req, res) => {
   try {
     const newCoupon = new Coupon(req.body);
