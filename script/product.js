@@ -33,6 +33,7 @@ const updateManyProducts = async () => {
       return newObj;
     });
 
+    
     fs.writeFileSync("data.json", JSON.stringify(result));
     console.log("data updated successfully!", result);
     process.exit();
