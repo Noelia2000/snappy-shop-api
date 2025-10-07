@@ -23,7 +23,6 @@ const buildQueryObject = (query) => {
   ];
 }
 
-
   if (customerName) {
     const isNumber = !Number.isNaN(Number(customerName));
     queryObject.$or = [];
