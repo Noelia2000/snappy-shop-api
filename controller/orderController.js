@@ -26,7 +26,7 @@ const buildQueryObject = (query) => {
 
   if (customerName) {
     const isNumber = !Number.isNaN(Number(customerName));
-
+    queryObject.$or = [];
     queryObject.$or = [{ "user_info.name": { $regex: customerName, $options: "i" } }];
     if (isNumber) queryObject.$or.push({ invoice: Number(customerName) });
   }
