@@ -13,7 +13,6 @@ Tech and Packages we use in this project:
     7. Dotenv for use environment variable.
     8. Nodemon for run on dev server.
     
-    
     9. Cors and Body parser
 
     10. asd
