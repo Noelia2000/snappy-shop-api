@@ -1,137 +1,101 @@
 const Order = require("../models/Order");
 
-const getAllOrders = async (req, res) => {
+const buildQueryObject = (query) => {
   const {
     day,
     status,
-    page,
-    limit,
     method,
     endDate,
-    // download,
-    // sellFrom,
     startDate,
     customerName,
-  } = req.query;
-
-  //  day count
-  let date = new Date();
-  const today = date.toString();
-  date.setDate(date.getDate() - Number(day));
-  const dateTime = date.toString();
-
-  const beforeToday = new Date();
-  beforeToday.setDate(beforeToday.getDate() - 1);
-  // const before_today = beforeToday.toString();
-
-  const startDateData = new Date(startDate);
-  startDateData.setDate(startDateData.getDate());
-  const start_date = startDateData.toString();
-
-  // console.log(" start_date", start_date, endDate);
+  } = query;
 
   const queryObject = {};
 
-  if (!status) {
-    queryObject.$or = [
-      { status: { $regex: `Pending`, $options: "i" } },
-      { status: { $regex: `Processing`, $options: "i" } },
-      { status: { $regex: `Delivered`, $options: "i" } },
-      { status: { $regex: `Cancel`, $options: "i" } },
-    ];
-  }
+  if (status) {
+  queryObject.status = { $regex: status, $options: "i" };
+} else {
+  queryObject.$or = [
+    { status: { $regex: "Pending", $options: "i" } },
+    { status: { $regex: "Processing", $options: "i" } },
+    { status: { $regex: "Delivered", $options: "i" } },
+    { status: { $regex: "Cancel", $options: "i" } },
+  ];
+}
+
 
   if (customerName) {
-    const isNumber = !isNaN(customerName);
-    queryObject.$or = [];
+    const isNumber = !Number.isNaN(Number(customerName));
 
-    queryObject.$or.push({
-      "user_info.name": { $regex: customerName, $options: "i" },
-    });
-
-    if (isNumber) {
-      queryObject.$or.push({
-        invoice: Number(customerName),
-      });
-    }
+    queryObject.$or = [{ "user_info.name": { $regex: customerName, $options: "i" } }];
+    if (isNumber) queryObject.$or.push({ invoice: Number(customerName) });
   }
 
   if (day) {
-    queryObject.createdAt = { $gte: dateTime, $lte: today };
-  }
-
-  if (status) {
-    queryObject.status = { $regex: `${status}`, $options: "i" };
+    const date = new Date();
+    const today = date.toString();
+    date.setDate(date.getDate() - Number(day));
+    queryObject.createdAt = { $gte: date.toString(), $lte: today };
   }
 
   if (startDate && endDate) {
-    queryObject.updatedAt = {
-      $gt: start_date,
-      $lt: endDate,
-    };
+    const start = new Date(startDate);
+    start.setDate(start.getDate());
+    queryObject.updatedAt = { $gt: start.toString(), $lt: endDate };
   }
+
   if (method) {
-    queryObject.paymentMethod = { $regex: `${method}`, $options: "i" };
+    queryObject.paymentMethod = { $regex: method, $options: "i" };
   }
 
-  const pages = Number(page) || 1;
-  const limits = Number(limit);
-  const skip = (pages - 1) * limits;
+  return queryObject;
+};
 
+const calculateMethodTotals = async (queryObject) => {
+  const filteredOrders = await Order.find(queryObject, {
+    paymentMethod: 1,
+    total: 1,
+  }).sort({ updatedAt: -1 });
+
+  const totals = [];
+  for (const order of filteredOrders) {
+    const existing = totals.find((item) => item.method === order.paymentMethod);
+    if (existing) existing.total += order.total;
+    else totals.push({ method: order.paymentMethod, total: order.total });
+  }
+  return totals;
+};
+
+const getAllOrders = async (req, res) => {
   try {
-    // total orders count
+    const queryObject = buildQueryObject(req.query);
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit);
+    const skip = (page - 1) * limit;
     const totalDoc = await Order.countDocuments(queryObject);
     const orders = await Order.find(queryObject)
-      .select(
-        "_id invoice paymentMethod subTotal total user_info discount shippingCost status createdAt updatedAt",
-      )
+      .select("_id invoice paymentMethod subTotal total user_info discount shippingCost status createdAt updatedAt")
       .sort({ updatedAt: -1 })
       .skip(skip)
-      .limit(limits);
+      .limit(limit);
 
-    let methodTotals = [];
-    if (startDate && endDate) {
-      // console.log("filter method total");
-      const filteredOrders = await Order.find(queryObject, {
-        _id: 1,
-        // subTotal: 1,
-        total: 1,
-
-        paymentMethod: 1,
-        // createdAt: 1,
-        updatedAt: 1,
-      }).sort({ updatedAt: -1 });
-      for (const order of filteredOrders) {
-        const { paymentMethod, total } = order;
-        const existPayment = methodTotals.find(
-          (item) => item.method === paymentMethod,
-        );
-
-        if (existPayment) {
-          existPayment.total += total;
-        } else {
-          methodTotals.push({
-            method: paymentMethod,
-            total: total,
-          });
-        }
-      }
-    }
+    const methodTotals =
+      req.query.startDate && req.query.endDate
+        ? await calculateMethodTotals(queryObject)
+        : [];
 
     res.send({
       orders,
-      limits,
-      pages,
+      limit,
+      page,
       totalDoc,
       methodTotals,
-      // orderOverview,
     });
   } catch (err) {
-    res.status(500).send({
-      message: err.message,
-    });
+    res.status(500).send({ message: err.message });
   }
 };
+
 
 const getOrderCustomer = async (req, res) => {
   try {
@@ -146,8 +110,6 @@ const getOrderCustomer = async (req, res) => {
 
 const getOrderById = async (req, res) => {
   try {
-    // console.log("getOrderById");
-
     const order = await Order.findById(req.params.id);
     res.send(order);
   } catch (err) {
@@ -202,11 +164,9 @@ const getDashboardRecentOrder = async (req, res) => {
     // console.log("getDashboardRecentOrder");
 
     const { page, limit } = req.query;
-
     const pages = Number(page) || 1;
     const limits = Number(limit) || 8;
     const skip = (pages - 1) * limits;
-
     const queryObject = {};
 
     queryObject.$or = [
@@ -224,7 +184,7 @@ const getDashboardRecentOrder = async (req, res) => {
       .skip(skip)
       .limit(limits);
 
-    // console.log('order------------<', orders);
+    
 
     res.send({
       orders: orders,
@@ -242,8 +202,6 @@ const getDashboardRecentOrder = async (req, res) => {
 // get dashboard count
 const getDashboardCount = async (req, res) => {
   try {
-    // console.log("getDashboardCount");
-
     const totalDoc = await Order.countDocuments();
 
     // total padding order count
@@ -315,8 +273,6 @@ const getDashboardAmount = async (req, res) => {
   // console.log('total')
   let week = new Date();
   week.setDate(week.getDate() - 10);
-
-  // console.log('getDashboardAmount');
 
   const currentDate = new Date();
   currentDate.setDate(1); // Set the date to the first day of the current month
@@ -463,7 +419,7 @@ const getDashboardAmount = async (req, res) => {
       totalAmount:
         totalAmount.length === 0
           ? 0
-          : parseFloat(totalAmount[0].tAmount).toFixed(2),
+          : Number.parseFloat(totalAmount[0].tAmount).toFixed(2),
       thisMonthlyOrderAmount: thisMonthOrderAmount[0]?.total,
       lastMonthOrderAmount: lastMonthOrderAmount[0]?.total,
       ordersData: orderFilteringData,
@@ -478,7 +434,7 @@ const getDashboardAmount = async (req, res) => {
 
 const getBestSellerProductChart = async (req, res) => {
   try {
-    // console.log("getBestSellerProductChart");
+    
 
     const totalDoc = await Order.countDocuments({});
     const bestSellingProduct = await Order.aggregate([
@@ -647,12 +603,12 @@ const getDashboardOrders = async (req, res) => {
       totalAmount:
         totalAmount.length === 0
           ? 0
-          : parseFloat(totalAmount[0].tAmount).toFixed(2),
+          : Number.parseFloat(totalAmount[0].tAmount).toFixed(2),
       todayOrder: todayOrder,
       totalAmountOfThisMonth:
         totalAmountOfThisMonth.length === 0
           ? 0
-          : parseFloat(totalAmountOfThisMonth[0].total).toFixed(2),
+          : Number.parseFloat(totalAmountOfThisMonth[0].total).toFixed(2),
       totalPendingOrder:
         totalPendingOrder.length === 0 ? 0 : totalPendingOrder[0],
       totalProcessingOrder:
