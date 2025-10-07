@@ -160,7 +160,7 @@ const deleteOrder = (req, res) => {
 // get dashboard recent order
 const getDashboardRecentOrder = async (req, res) => {
   try {
-    // console.log("getDashboardRecentOrder");
+  
 
     const { page, limit } = req.query;
     const pages = Number(page) || 1;
@@ -394,8 +394,7 @@ const getDashboardAmount = async (req, res) => {
       },
     ]);
 
-    // console.log("thisMonthlyOrderAmount ===>", thisMonthlyOrderAmount);
-
+    
     // order list last 10 days
     const orderFilteringData = await Order.find(
       {
