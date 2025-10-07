@@ -12,16 +12,17 @@ const buildQueryObject = (query) => {
 
   const queryObject = {};
 
-  if (!status) {
-    queryObject.$or = [
-      { status: { $regex: "Pending", $options: "i" } },
-      { status: { $regex: "Processing", $options: "i" } },
-      { status: { $regex: "Delivered", $options: "i" } },
-      { status: { $regex: "Cancel", $options: "i" } },
-    ];
-  } else {
-    queryObject.status = { $regex: status, $options: "i" };
-  }
+  if (status) {
+  queryObject.status = { $regex: status, $options: "i" };
+} else {
+  queryObject.$or = [
+    { status: { $regex: "Pending", $options: "i" } },
+    { status: { $regex: "Processing", $options: "i" } },
+    { status: { $regex: "Delivered", $options: "i" } },
+    { status: { $regex: "Cancel", $options: "i" } },
+  ];
+}
+
 
   if (customerName) {
     const isNumber = !Number.isNaN(Number(customerName));
