@@ -1,4 +1,4 @@
-const baseSettings = [
+const setting = [
   {
     setting: {
       number_of_image_per_product: "5",
@@ -968,4 +968,4 @@ const baseSettings = [
   },
 ];
 
-module.exports = baseSettings;
+module.exports = setting;
