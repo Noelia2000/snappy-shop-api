@@ -2,22 +2,22 @@ require("dotenv").config();
 const { connectDB } = require("../config/db");
 
 const Admin = require("../models/Admin");
-const adminData = require("../utilsBase/admin");
+const adminData = require("../utils/shared/admin");
 
 const Customer = require("../models/Customer");
-const customerData = require("../utilsBase/customers");
+const customerData = require("../utils/shared/customers");
 
 const Coupon = require("../models/Coupon");
 const couponData = require("../utilsBase/coupon");
 
 const Product = require("../models/Product");
-const productData = require("../utilsBase/products");
+const productData = require("../utils/shared/products");
 
 const Order = require("../models/Order");
 const orderData = require("../utilsBase/orders");
 
 const Category = require("../models/Category");
-const categoryData = require("../utilsBase/categories");
+const categoryData = require("../utils/shared/categories");
 
 const Language = require("../models/Language");
 const languageData = require("../utilsBase/language");
@@ -53,16 +53,16 @@ const importData = async () => {
     await Attribute.insertMany(attributeData);
 
     await Customer.deleteMany();
-    await Customer.insertMany(customerData);
+    await Customer.insertMany(customerData[4]);
 
     await Admin.deleteMany();
-    await Admin.insertMany(adminData);
+    await Admin.insertMany(adminData[3]);
 
     await Category.deleteMany();
     await Category.insertMany(categoryData);
 
     await Product.deleteMany();
-    await Product.insertMany(productData);
+    await Product.insertMany(productData[0]);
 
     await Coupon.deleteMany();
     await Coupon.insertMany(couponData);
