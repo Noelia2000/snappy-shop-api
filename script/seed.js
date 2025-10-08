@@ -1,25 +1,23 @@
-const runSeed = require("./runSeed");
-runSeed("utils");
 require("dotenv").config();
 const { connectDB } = require("../config/db");
 
 const Admin = require("../models/Admin");
-const adminData = require("../utils/admin");
+const adminData = require("../utils/shared/admin");
 
 const Customer = require("../models/Customer");
-const customerData = require("../utils/customers");
+const customerData = require("../utils/shared/customers");
 
 const Coupon = require("../models/Coupon");
 const couponData = require("../utils/coupon");
 
 const Product = require("../models/Product");
-const productData = require("../utils/products");
+const productData = require("../utils/shared/products");
 
 const Order = require("../models/Order");
 const orderData = require("../utils/orders");
 
 const Category = require("../models/Category");
-const categoryData = require("../utils/categories");
+const categoryData = require("../utils/shared/categories");
 
 const Language = require("../models/Language");
 const languageData = require("../utils/language");
