@@ -42,7 +42,8 @@ const verifyEmailAddress = async (req, res) => {
 };
 
 const verifyPhoneNumber = async (req, res) => {
-  const phoneNumber = req.body.phone;
+  const phoneNumber = String(req.body.phone || "").trim();
+
 
   
 
