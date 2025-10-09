@@ -57,13 +57,20 @@ const calculateMethodTotals = async (queryObject) => {
   }).sort({ updatedAt: -1 });
 
   const totals = [];
+
   for (const order of filteredOrders) {
     const existing = totals.find((item) => item.method === order.paymentMethod);
-    if (existing) existing.total += order.total;
-    else totals.push({ method: order.paymentMethod, total: order.total });
+
+    if (existing) {
+      existing.total += order.total;
+    } else {
+      totals.push({ method: order.paymentMethod, total: order.total });
+    }
   }
+
   return totals;
 };
+
 
 const getAllOrders = async (req, res) => {
   try {
