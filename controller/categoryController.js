@@ -20,7 +20,7 @@ const addAllCategory = async (req, res) => {
   try {
     await Category.deleteMany();
 
-    await Category.insertMany(req.body);
+    await Category.insertMany(JSON.parse(JSON.stringify(req.body)));
 
     res.status(200).send({
       message: "Category Added Successfully!",
@@ -133,9 +133,9 @@ const updateManyCategory = async (req, res) => {
     }
 
     await Category.updateMany(
-      { _id: { $in: req.body.ids } },
+      { _id: { $in: (req.body.ids || []).map((id) => String(id)) } },
       {
-        $set: updatedData,
+        $set: JSON.parse(JSON.stringify(updatedData)),
       },
       {
         multi: true,
@@ -156,10 +156,10 @@ const updateManyCategory = async (req, res) => {
 const updateStatus = async (req, res) => {
   // console.log('update status')
   try {
-    const newStatus = req.body.status;
+    const newStatus = String(req.body.status);
 
     await Category.updateOne(
-      { _id: req.params.id },
+      { _id: String(req.params.id) },
       {
         $set: {
           status: newStatus,
@@ -180,8 +180,8 @@ const updateStatus = async (req, res) => {
 const deleteCategory = async (req, res) => {
   try {
     console.log("id cat >>", req.params.id);
-    await Category.deleteOne({ _id: req.params.id });
-    await Category.deleteMany({ parentId: req.params.id });
+    await Category.deleteOne({ _id: String(req.params.id) });
+    await Category.deleteMany({ parentId: String(req.params.id) });
     res.status(200).send({
       message: "Category Deleted Successfully!",
     });

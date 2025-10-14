@@ -15,7 +15,7 @@ const {
 const { sendVerificationCode } = require("../lib/phone-verification/sender");
 
 const verifyEmailAddress = async (req, res) => {
-  const isAdded = await Customer.findOne({ email: req.body.email });
+  const isAdded = await Customer.findOne({ email: String(req.body.email) });
   if (isAdded) {
     return res.status(403).send({
       message: "This Email already Added!",

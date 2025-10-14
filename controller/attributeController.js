@@ -19,9 +19,10 @@ const addChildAttributes = async (req, res) => {
   try {
     const { id } = req.params;
     const attribute = await Attribute.findById(id);
+
     await Attribute.updateOne(
-      { _id: attribute._id },
-      { $push: { variants: req.body } },
+      { _id: String(attribute._id) },
+      { $push: { variants: JSON.parse(JSON.stringify(req.body)) } },
     );
     res.send({
       message: "Attribute Value Added Successfully!",
@@ -36,7 +37,7 @@ const addChildAttributes = async (req, res) => {
 const addAllAttributes = async (req, res) => {
   try {
     await Attribute.deleteMany();
-    await Attribute.insertMany(req.body);
+    await Attribute.insertMany(JSON.parse(JSON.stringify(req.body))); 
     res.send({
       message: "Added all attributes successfully!",
     });
@@ -113,11 +114,11 @@ const getShowingAttributesTest = async (req, res) => {
 const updateManyAttribute = async (req, res) => {
   try {
     await Attribute.updateMany(
-      { _id: { $in: req.body.ids } },
+      { _id: { $in: req.body.ids.map((id) => String(id)) } },
       {
         $set: {
-          option: req.body.option,
-          status: req.body.status,
+          option: String(req.body.option),
+          status: String(req.body.status),
         },
       },
       {
@@ -129,9 +130,7 @@ const updateManyAttribute = async (req, res) => {
       message: "Attributes update successfully!",
     });
   } catch (err) {
-    res.status(500).send({
-      message: err.message,
-    });
+    res.status(500).send({ message: err.message });
   }
 };
 
@@ -154,7 +153,7 @@ const getChildAttributeById = async (req, res) => {
     const { id, ids } = req.params;
 
     const attribute = await Attribute.findOne({
-      _id: id,
+      _id: String(id),
     });
 
     const childAttribute = attribute.variants.find((attr) => {
@@ -198,8 +197,8 @@ const updateChildAttributes = async (req, res) => {
     const { attributeId, childId } = req.params;
 
     let attribute = await Attribute.findOne({
-      _id: attributeId,
-      "variants._id": childId,
+      _id: String(attributeId),
+      "variants._id": String(childId),
     });
 
     if (attribute) {
@@ -211,11 +210,11 @@ const updateChildAttributes = async (req, res) => {
       };
 
       await Attribute.updateOne(
-        { _id: attributeId, "variants._id": childId },
+        { _id: String(attributeId), "variants._id": String(childId) },
         {
           $set: {
-            "variants.$.name": name,
-            "variants.$.status": req.body.status,
+            "variants.$.name": JSON.parse(JSON.stringify(name)),
+            "variants.$.status": String(req.body.status),
           },
         },
       );
@@ -255,10 +254,10 @@ const updateManyChildAttribute = async (req, res) => {
 
     if (totalVariants.length === 0) {
       await Attribute.updateOne(
-        { _id: req.body.currentId },
+        { _id: String(req.body.currentId) },
         {
           $set: {
-            variants: childIdAttribute.variants,
+            variants: JSON.parse(JSON.stringify(childIdAttribute.variants)),
           },
         },
         {
@@ -267,10 +266,10 @@ const updateManyChildAttribute = async (req, res) => {
       );
     } else {
       await Attribute.updateOne(
-        { _id: req.body.changeId },
+        { _id: String(req.body.changeId) },
         {
           $set: {
-            variants: totalVariants,
+            variants: JSON.parse(JSON.stringify(totalVariants)),
           },
         },
         {
@@ -279,9 +278,9 @@ const updateManyChildAttribute = async (req, res) => {
       );
 
       await Attribute.updateOne(
-        { _id: req.body.currentId },
+        { _id: String(req.body.currentId) },
         {
-          $pull: { variants: { _id: req.body.ids } },
+          $pull: { variants: { _id: String(req.body.ids) } },
         },
         {
           multi: true,
@@ -301,9 +300,9 @@ const updateManyChildAttribute = async (req, res) => {
 
 const updateStatus = async (req, res) => {
   try {
-    const newStatus = req.body.status;
+    const newStatus = String(req.body.status);
     await Attribute.updateOne(
-      { _id: req.params.id },
+      { _id: String(req.params.id) },
       {
         $set: {
           status: newStatus,
@@ -322,10 +321,10 @@ const updateStatus = async (req, res) => {
 
 const updateChildStatus = async (req, res) => {
   try {
-    const newStatus = req.body.status;
+    const newStatus = String(req.body.status);
 
     await Attribute.updateOne(
-      { "variants._id": req.params.id },
+      { "variants._id": String(req.params.id) },
       {
         $set: {
           "variants.$.status": newStatus,
@@ -344,7 +343,7 @@ const updateChildStatus = async (req, res) => {
 
 const deleteAttribute = async (req, res) => {
   try {
-    await Attribute.deleteOne({ _id: req.params.id });
+    await Attribute.deleteOne({ _id: String(req.params.id) });
     res.send({
       message: "Attribute Deleted Successfully!",
     });
@@ -360,8 +359,8 @@ const deleteChildAttribute = async (req, res) => {
     const { attributeId, childId } = req.params;
 
     await Attribute.updateOne(
-      { _id: attributeId },
-      { $pull: { variants: { _id: childId } } },
+      { _id: String(attributeId) },
+      { $pull: { variants: { _id: String(childId) } } },
     );
 
     await handleProductAttribute(attributeId, childId);
@@ -377,7 +376,9 @@ const deleteChildAttribute = async (req, res) => {
 
 const deleteManyAttribute = async (req, res) => {
   try {
-    await Attribute.deleteMany({ _id: req.body.ids });
+    await Attribute.deleteMany({
+      _id: { $in: req.body.ids.map((id) => String(id)) },
+});
   
     res.send({
       message: `Attributes Delete Successfully!`,
@@ -392,9 +393,9 @@ const deleteManyAttribute = async (req, res) => {
 const deleteManyChildAttribute = async (req, res) => {
   try {
     await Attribute.updateOne(
-      { _id: req.body.id },
+      { _id: String(req.body.id) },
       {
-        $pull: { variants: { _id: req.body.ids } },
+        $pull: { variants: { _id: String(req.body.ids) } },
       },
       {
         multi: true,

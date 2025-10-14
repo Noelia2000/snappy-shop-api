@@ -19,7 +19,7 @@ const addCoupon = async (req, res) => {
 const addAllCoupon = async (req, res) => {
   try {
     await Coupon.deleteMany();
-    await Coupon.insertMany(req.body);
+    await Coupon.insertMany(JSON.parse(JSON.stringify(req.body)));
     res.status(200).send({
       message: "Coupon Added successfully!",
     });
@@ -37,7 +37,7 @@ const getAllCoupons = async (req, res) => {
     const { status } = req.query;
 
     if (status) {
-      queryObject.status = { $regex: `${status}`, $options: "i" };
+      queryObject.status = { $regex: String(status), $options: "i" };
     }
     const coupons = await Coupon.find(queryObject).sort({ _id: -1 });
     // console.log('coups',coupons)
@@ -115,10 +115,10 @@ const updateCoupon = async (req, res) => {
 const updateManyCoupons = async (req, res) => {
   try {
     await Coupon.updateMany(
-      { _id: { $in: req.body.ids } },
+      { _id: { $in: (req.body.ids || []).map(id => String(id)) } },
       {
         $set: {
-          status: req.body.status,
+          status: String(req.body.status),
           startTime: req.body.startTime,
           endTime: req.body.endTime,
         },
@@ -140,10 +140,10 @@ const updateManyCoupons = async (req, res) => {
 
 const updateStatus = async (req, res) => {
   try {
-    const newStatus = req.body.status;
+    const newStatus = String(req.body.status);
 
     await Coupon.updateOne(
-      { _id: req.params.id },
+      { _id: String(req.params.id) },
       {
         $set: {
           status: newStatus,
@@ -163,7 +163,7 @@ const updateStatus = async (req, res) => {
 
 const deleteCoupon = async (req, res) => {
   try {
-    await Coupon.deleteOne({ _id: req.params.id });
+    await Coupon.deleteOne({ _id: String(req.params.id) });
     res.status(200).send({
       message: "Coupon Deleted Successfully!",
     });
@@ -174,7 +174,8 @@ const deleteCoupon = async (req, res) => {
 
 const deleteManyCoupons = async (req, res) => {
   try {
-    await Coupon.deleteMany({ _id: req.body.ids });
+    const ids = (req.body.ids || []).map(id => String(id));
+    await Coupon.deleteMany({ _id: { $in: ids } });
     res.send({
       message: `Coupons Delete Successfully!`,
     });
