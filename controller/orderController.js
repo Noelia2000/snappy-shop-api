@@ -1,46 +1,55 @@
 const Order = require("../models/Order");
 
+const sanitizeString = (str) => {
+  if (typeof str !== "string") return "";
+  return str.replace(/[^\w\s.-]/gi, ""); 
+};
+
+const sanitizeNumber = (value, defaultValue = 0) => {
+  const num = Number(value);
+  return Number.isNaN(num) ? defaultValue : num;
+};
+
 const buildQueryObject = (query) => {
-  const {
-    day,
-    status,
-    method,
-    endDate,
-    startDate,
-    customerName,
-  } = query;
+  const day = sanitizeNumber(query.day);
+  const status = sanitizeString(query.status);
+  const method = sanitizeString(query.method);
+  const startDate = sanitizeString(query.startDate);
+  const endDate = sanitizeString(query.endDate);
+  const customerName = sanitizeString(query.customerName);
 
   const queryObject = {};
 
   if (status) {
-  queryObject.status = { $regex: status, $options: "i" };
-} else {
-  queryObject.$or = [
-    { status: { $regex: "Pending", $options: "i" } },
-    { status: { $regex: "Processing", $options: "i" } },
-    { status: { $regex: "Delivered", $options: "i" } },
-    { status: { $regex: "Cancel", $options: "i" } },
-  ];
-}
+    queryObject.status = { $regex: status, $options: "i" };
+  } else {
+    queryObject.$or = [
+      { status: { $regex: "Pending", $options: "i" } },
+      { status: { $regex: "Processing", $options: "i" } },
+      { status: { $regex: "Delivered", $options: "i" } },
+      { status: { $regex: "Cancel", $options: "i" } },
+    ];
+  }
 
   if (customerName) {
     const isNumber = !Number.isNaN(Number(customerName));
-    queryObject.$or = [];
-    queryObject.$or = [{ "user_info.name": { $regex: customerName, $options: "i" } }];
+    queryObject.$or = [
+      { "user_info.name": { $regex: customerName, $options: "i" } },
+    ];
     if (isNumber) queryObject.$or.push({ invoice: Number(customerName) });
   }
 
   if (day) {
-    const date = new Date();
-    const today = date.toString();
-    date.setDate(date.getDate() - Number(day));
-    queryObject.createdAt = { $gte: date.toString(), $lte: today };
+    const today = new Date();
+    const pastDate = new Date();
+    pastDate.setDate(today.getDate() - day);
+    queryObject.createdAt = { $gte: pastDate, $lte: today };
   }
 
   if (startDate && endDate) {
     const start = new Date(startDate);
-    start.setDate(start.getDate());
-    queryObject.updatedAt = { $gt: start.toString(), $lt: endDate };
+    const end = new Date(endDate);
+    queryObject.updatedAt = { $gt: start, $lt: end };
   }
 
   if (method) {
@@ -57,26 +66,24 @@ const calculateMethodTotals = async (queryObject) => {
   }).sort({ updatedAt: -1 });
 
   const totals = [];
-
   for (const order of filteredOrders) {
     const existing = totals.find((item) => item.method === order.paymentMethod);
-
     if (existing) {
       existing.total += order.total;
     } else {
       totals.push({ method: order.paymentMethod, total: order.total });
     }
   }
-
   return totals;
 };
 
-
 const getAllOrders = async (req, res) => {
   try {
+
     const queryObject = buildQueryObject(req.query);
-    const page = Number(req.query.page) || 1;
-    const limit = Number(req.query.limit);
+
+    const page = sanitizeNumber(req.query.page, 1);
+    const limit = sanitizeNumber(req.query.limit, 10);
     const skip = (page - 1) * limit;
     const totalDoc = await Order.countDocuments(queryObject);
     const orders = await Order.find(queryObject)
@@ -86,7 +93,8 @@ const getAllOrders = async (req, res) => {
       .limit(limit);
 
     const methodTotals =
-      req.query.startDate && req.query.endDate
+      sanitizeString(req.query.startDate) &&
+      sanitizeString(req.query.endDate)
         ? await calculateMethodTotals(queryObject)
         : [];
 
@@ -102,10 +110,14 @@ const getAllOrders = async (req, res) => {
   }
 };
 
-
 const getOrderCustomer = async (req, res) => {
   try {
-    const orders = await Order.find({ user: req.params.id }).sort({ _id: -1 });
+    const userId = String(req.params.id).trim();
+    if (!/^[a-fA-F0-9]{24}$/.test(userId)) {
+      return res.status(400).send({ message: "Invalid user ID format" });
+    }
+
+    const orders = await Order.find({ user: userId }).sort({ _id: -1 });
     res.send(orders);
   } catch (err) {
     res.status(500).send({
