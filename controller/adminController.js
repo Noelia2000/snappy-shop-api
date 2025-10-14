@@ -14,7 +14,7 @@ const Admin = require("../models/Admin");
 
 const registerAdmin = async (req, res) => {
   try {
-    const isAdded = await Admin.findOne({ email: req.body.email });
+    const isAdded = await Admin.findOne({ email: String(req.body.email) });
     if (isAdded) {
       return res.status(403).send({
         message: "This Email already Added!",
@@ -48,9 +48,11 @@ const registerAdmin = async (req, res) => {
 
 const loginAdmin = async (req, res) => {
   try {
-    const admin = await Admin.findOne({ email: req.body.email }).populate(
+
+    const admin = await Admin.findOne({ email: String(req.body.email) }).populate(
       "role",
     );
+
     if (admin && bcrypt.compareSync(req.body.password, admin.password)) {
       if (admin?.status === "Inactive") {
         return res.status(403).send({
@@ -85,7 +87,8 @@ const loginAdmin = async (req, res) => {
 };
 
 const forgetPassword = async (req, res) => {
-  const isAdded = await Admin.findOne({ email: req.body.verifyEmail });
+
+  const isAdded = await Admin.findOne({ email: String(req.body.verifyEmail) });
 
   if (isAdded) {
 
@@ -141,7 +144,7 @@ const resetPassword = async (req, res) => {
 
 const addStaff = async (req, res) => {
   try {
-    const isAdded = await Admin.findOne({ email: req.body.email });
+    const isAdded = await Admin.findOne({ email: String(req.body.email) });
     if (isAdded) {
       return res.status(500).send({
         message: "This Email already Added!",
@@ -193,7 +196,7 @@ const getStaffById = async (req, res) => {
 
 const updateStaff = async (req, res) => {
   try {
-    const admin = await Admin.findOne({ _id: req.params.id });
+    const admin = await Admin.findOne({ _id: String(req.params.id) });
 
     if (admin) {
       admin.name = { ...admin.name, ...req.body.name };
@@ -233,7 +236,7 @@ const updateStaff = async (req, res) => {
 };
 
 const deleteStaff = (req, res) => {
-  Admin.deleteOne({ _id: req.params.id }, (err) => {
+  Admin.deleteOne({ _id: String(req.params.id) }, (err) => {
     if (err) {
       res.status(500).send({
         message: err.message,
@@ -248,10 +251,10 @@ const deleteStaff = (req, res) => {
 
 const updatedStatus = async (req, res) => {
   try {
-    const newStatus = req.body.status;
+    const newStatus = String(req.body.status);
 
     await Admin.updateOne(
-      { _id: req.params.id },
+      { _id: String(req.params.id) },
       {
         $set: {
           status: newStatus,
