@@ -22,7 +22,7 @@ const addChildAttributes = async (req, res) => {
 
     await Attribute.updateOne(
       { _id: String(attribute._id) },
-      { $push: { variants: JSON.parse(JSON.stringify(req.body)) } },
+      { $push: { variants: structuredClone(req.body) } },
     );
     res.send({
       message: "Attribute Value Added Successfully!",
@@ -37,7 +37,7 @@ const addChildAttributes = async (req, res) => {
 const addAllAttributes = async (req, res) => {
   try {
     await Attribute.deleteMany();
-    await Attribute.insertMany(JSON.parse(JSON.stringify(req.body))); 
+    await Attribute.insertMany(structuredClone(req.body)); 
     res.send({
       message: "Added all attributes successfully!",
     });
@@ -114,7 +114,7 @@ const getShowingAttributesTest = async (req, res) => {
 const updateManyAttribute = async (req, res) => {
   try {
     await Attribute.updateMany(
-      { _id: { $in: req.body.ids.map((id) => String(id)) } },
+      { _id: { $in: req.body.ids.map(String) } },
       {
         $set: {
           option: String(req.body.option),
@@ -213,7 +213,7 @@ const updateChildAttributes = async (req, res) => {
         { _id: String(attributeId), "variants._id": String(childId) },
         {
           $set: {
-            "variants.$.name": JSON.parse(JSON.stringify(name)),
+            "variants.$.name": structuredClone(name),
             "variants.$.status": String(req.body.status),
           },
         },
@@ -257,7 +257,7 @@ const updateManyChildAttribute = async (req, res) => {
         { _id: String(req.body.currentId) },
         {
           $set: {
-            variants: JSON.parse(JSON.stringify(childIdAttribute.variants)),
+            variants: structuredClone(childIdAttribute.variants),
           },
         },
         {
@@ -269,7 +269,7 @@ const updateManyChildAttribute = async (req, res) => {
         { _id: String(req.body.changeId) },
         {
           $set: {
-            variants: JSON.parse(JSON.stringify(totalVariants)),
+            variants: structuredClone(totalVariants),
           },
         },
         {
@@ -377,7 +377,7 @@ const deleteChildAttribute = async (req, res) => {
 const deleteManyAttribute = async (req, res) => {
   try {
     await Attribute.deleteMany({
-      _id: { $in: req.body.ids.map((id) => String(id)) },
+      _id: { $in: req.body.ids.map(String) },
 });
   
     res.send({

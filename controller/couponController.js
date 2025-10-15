@@ -19,7 +19,7 @@ const addCoupon = async (req, res) => {
 const addAllCoupon = async (req, res) => {
   try {
     await Coupon.deleteMany();
-    await Coupon.insertMany(JSON.parse(JSON.stringify(req.body)));
+    await Coupon.insertMany(structuredClone(req.body));
     res.status(200).send({
       message: "Coupon Added successfully!",
     });
@@ -115,7 +115,7 @@ const updateCoupon = async (req, res) => {
 const updateManyCoupons = async (req, res) => {
   try {
     await Coupon.updateMany(
-      { _id: { $in: (req.body.ids || []).map(id => String(id)) } },
+      { _id: { $in: (req.body.ids || []).map(String) } },
       {
         $set: {
           status: String(req.body.status),
@@ -174,7 +174,7 @@ const deleteCoupon = async (req, res) => {
 
 const deleteManyCoupons = async (req, res) => {
   try {
-    const ids = (req.body.ids || []).map(id => String(id));
+    const ids = (req.body.ids || []).map(String);
     await Coupon.deleteMany({ _id: { $in: ids } });
     res.send({
       message: `Coupons Delete Successfully!`,

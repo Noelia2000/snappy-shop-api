@@ -17,7 +17,7 @@ const addCurrency = async (req, res) => {
 
 const addAllCurrency = async (req, res) => {
   try {
-    await Currencie.insertMany(JSON.parse(JSON.stringify(req.body)));
+    await Currencie.insertMany(structuredClone(req.body));
     res.send({ message: "All Currencies added successfully!" });
   } catch (err) {
     res.status(500).send({
@@ -88,7 +88,7 @@ const updateCurrency = async (req, res) => {
 const updateManyCurrency = async (req, res) => {
   try {
     await Currencie.updateMany(
-      { _id: { $in: (req.body.ids || []).map(id => String(id)) } },
+      { _id: { $in: (req.body.ids || []).map(String) } },
       {
         $set: {
           status: String(req.body.status),
@@ -170,7 +170,7 @@ const deleteCurrency = async (req, res) => {
 
 const deleteManyCurrency = async (req, res) => {
   try {
-    const ids = (req.body.ids || []).map(id => String(id));
+    const ids = (req.body.ids || []).map(String);
     await Currencie.deleteMany({ _id: { $in: ids } });
 
     res.send({

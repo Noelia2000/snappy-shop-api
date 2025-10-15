@@ -20,7 +20,7 @@ const addAllCategory = async (req, res) => {
   try {
     await Category.deleteMany();
 
-    await Category.insertMany(JSON.parse(JSON.stringify(req.body)));
+    await Category.insertMany(structuredClone(req.body));
 
     res.status(200).send({
       message: "Category Added Successfully!",
@@ -133,9 +133,9 @@ const updateManyCategory = async (req, res) => {
     }
 
     await Category.updateMany(
-      { _id: { $in: (req.body.ids || []).map((id) => String(id)) } },
+      { _id: { $in: (req.body.ids || []).map(String) } },
       {
-        $set: JSON.parse(JSON.stringify(updatedData)),
+        $set: structuredClone(updatedData),
       },
       {
         multi: true,
