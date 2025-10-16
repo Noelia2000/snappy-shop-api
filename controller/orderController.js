@@ -1,8 +1,9 @@
+const { default: mongoose } = require("mongoose");
 const Order = require("../models/Order");
 
 const sanitizeString = (str) => {
   if (typeof str !== "string") return "";
-  return str.replace(/[^\w\s.-]/gi, ""); 
+  return str.replaceAll(/[^\w\s.-]/gi, ""); 
 };
 
 const sanitizeNumber = (value, defaultValue = 0) => {
@@ -138,32 +139,43 @@ const getOrderById = async (req, res) => {
 };
 
 const updateOrder = (req, res) => {
-  const newStatus = req.body.status;
+  const { status } = req.body;
+  const { id } = req.params;
+
+  if (!/^[0-9a-fA-F]{24}$/.test(id)) {
+    return res.status(400).send({ message: "Invalid ID format" });
+  }
+
+  const safeId = new mongoose.Types.ObjectId(id);
+
+  if (!status) {
+    return res.status(400).send({ message: "Invalid status" });
+  }
+
   Order.updateOne(
-    {
-      _id: req.params.id,
-    },
-    {
-      $set: {
-        status: newStatus,
-      },
-    },
+    { _id: safeId },
+    { $set: { status } },
     (err) => {
       if (err) {
-        res.status(500).send({
-          message: err.message,
-        });
+        res.status(500).send({ message: err.message });
       } else {
-        res.status(200).send({
-          message: "Order Updated Successfully!",
-        });
+        res.status(200).send({ message: "Order Updated Successfully!" });
       }
-    },
+    }
   );
 };
 
+
 const deleteOrder = (req, res) => {
-  Order.deleteOne({ _id: req.params.id }, (err) => {
+  const { id } = req.params;
+
+  if (!/^[0-9a-fA-F]{24}$/.test(id)) {
+    return res.status(400).send({ message: "Invalid ID format" });
+  }
+
+  const safeId = new mongoose.Types.ObjectId(id);
+
+  Order.deleteOne({ _id: safeId }, (err) => {
     if (err) {
       res.status(500).send({
         message: err.message,
@@ -646,9 +658,14 @@ const getTotalSoldByProduct = async (req, res) => {
   try {
     const { productId } = req.params;
 
+    if (!/^[0-9a-fA-F]{24}$/.test(productId)) {
+      return res.status(400).json({ message: "Invalid productId" });
+    }
+
+    const safeProductId = new mongoose.Types.ObjectId(productId);
+
     const result = await Order.aggregate([
       { $unwind: "$cart" },
-      { $match: { "cart.id": productId } },
       {
         $group: {
           _id: "$cart.id",
