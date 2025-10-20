@@ -154,7 +154,7 @@ const getProductBySlug = async (req, res) => {
       return res.status(400).send({ message: "Invalid slug" });
     }
 
-    const safeSlug = slug.replace(/[^\w\-]/g, ""); 
+    const safeSlug = slug.replaceAll(/[^\w-]/g, "");
 
     const product = await Product.findOne({ slug: safeSlug });
 
@@ -292,8 +292,6 @@ const updateStatus = (req, res) => {
   );
 };
 
-const mongoose = require("mongoose");
-
 const deleteProduct = (req, res) => {
   const { id } = req.params;
 
@@ -328,7 +326,7 @@ const getShowingStoreProducts = async (req, res) => {
 
     if (title && typeof title === "string") {
    
-      const safeTitle = title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const safeTitle = title.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&'); 
       const titleQueries = languageCodes.map((lang) => ({
         [`title.${lang}`]: { $regex: safeTitle, $options: "i" },
       }));
@@ -336,7 +334,7 @@ const getShowingStoreProducts = async (req, res) => {
     }
 
     if (slug && typeof slug === "string") {
-      const safeSlug = slug.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const safeSlug = slug.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&');
       queryObject.slug = { $regex: safeSlug, $options: "i" };
     }
 

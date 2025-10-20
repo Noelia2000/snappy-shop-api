@@ -666,6 +666,7 @@ const getTotalSoldByProduct = async (req, res) => {
 
     const result = await Order.aggregate([
       { $unwind: "$cart" },
+      { $match: { "cart.id": safeProductId } }, 
       {
         $group: {
           _id: "$cart.id",

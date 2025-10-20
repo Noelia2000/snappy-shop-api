@@ -626,7 +626,7 @@ const getCustomerByEmail = async (req, res) => {
 
     const email =
       typeof rawEmail === "string"
-        ? rawEmail.trim().toLowerCase().replace(/[^\w@.-]/g, "")
+        ? rawEmail.trim().toLowerCase().replaceAll(/[^\w@.-]/g, "")
         : null;
 
     if (!email) {
