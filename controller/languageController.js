@@ -1,5 +1,6 @@
 const Language = require("../models/Language");
 const { mongo_connection } = require("../config/db"); // CCDev
+const { default: mongoose } = require("mongoose");
 
 const addLanguage = async (req, res) => {
   try {
@@ -102,21 +103,30 @@ const updateManyLanguage = async (req, res) => {
   try {
     const { ids, status } = req.body;
 
-    if (!Array.isArray(ids) || ids.some(id => typeof id !== "string")) {
+    if (
+      !Array.isArray(ids) ||
+      ids.length === 0 ||
+      ids.some((id) => !mongoose.Types.ObjectId.isValid(id))
+    ) {
       return res.status(400).send({ message: "Invalid IDs format" });
     }
 
-    if (typeof status !== "string") {
+    if (typeof status !== "string" || !status.trim()) {
       return res.status(400).send({ message: "Invalid status value" });
     }
 
+    const safeStatus = status.trim();
+
+    const objectIds = ids.map((id) => new mongoose.Types.ObjectId(id));
+
     await Language.updateMany(
-      { _id: { $in: ids } },
-      { $set: { status: status.trim() } }
+      { _id: { $in: objectIds } },
+      { $set: { status: safeStatus } }
     );
 
     res.send({ message: "Languages updated successfully!" });
   } catch (err) {
+    console.error(err);
     res.status(500).send({ message: err.message });
   }
 };
