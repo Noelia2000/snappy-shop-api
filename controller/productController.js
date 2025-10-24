@@ -145,18 +145,15 @@ const getAllProducts = async (req, res) => {
   }
 };
 
-
 const getProductBySlug = async (req, res) => {
   try {
     const { slug } = req.params;
 
-    if (typeof slug !== "string" || slug.trim() === "") {
+    if (typeof slug !== "string" || !/^[A-Za-z0-9_-]+$/.test(slug)) {
       return res.status(400).send({ message: "Invalid slug" });
     }
 
-    const sanitizeSlug = (input) => input.replaceAll(/[^A-Za-z0-9_-]/g, "");
-    const safeSlug = sanitizeSlug(slug);
-    const product = await Product.findOne({ slug: safeSlug }).lean().exec();
+    const product = await Product.findOne({ slug }).lean().exec();
 
     if (!product) {
       return res.status(404).send({ message: "Product not found" });
@@ -169,7 +166,6 @@ const getProductBySlug = async (req, res) => {
     });
   }
 };
-
 
 const getProductById = async (req, res) => {
   try {
@@ -316,97 +312,41 @@ const deleteProduct = (req, res) => {
 
 const getShowingStoreProducts = async (req, res) => {
   try {
+    const { category, title, slug } = req.query;
+
+    const sanitizeInput = (input) => (typeof input === "string" ? input.replaceAll(/[^\w\s.-]/g, "").trim() : "");
+
     const queryObject = { status: "show" };
-    let { category, title, slug } = req.query;
+    if (sanitizeInput(category)) queryObject.categories = { $in: [sanitizeInput(category)] };
+    if (sanitizeInput(title)) queryObject.$or = languageCodes.map(lang => ({ [`title.${lang}`]: { $regex: sanitizeInput(title), $options: "i" } }));
+    if (sanitizeInput(slug)) queryObject.slug = { $regex: sanitizeInput(slug), $options: "i" };
 
-    const sanitizeInput = (input) => {
-      if (typeof input !== "string") return "";
-     
-      return input.replaceAll(/[^\w\s.-]/g, "").trim();
-    };
+    const fetchProducts = async (filter, limit = 100, sort = { _id: -1 }) =>
+      Product.find(filter).populate({ path: "category", select: "name _id" }).sort(sort).limit(limit);
 
-    if (category && typeof category === "string") {
-      const safeCategory = sanitizeInput(category);
-      if (safeCategory) {
-        queryObject.categories = { $in: [safeCategory] };
-      }
-    }
-
-    if (title && typeof title === "string") {
-      const safeTitle = sanitizeInput(title);
-      if (safeTitle) {
-        const titleQueries = languageCodes.map((lang) => ({
-          [`title.${lang}`]: { $regex: safeTitle, $options: "i" },
-        }));
-        queryObject.$or = titleQueries;
-      }
-    }
-
-    if (slug && typeof slug === "string") {
-      const safeSlug = sanitizeInput(slug);
-      if (safeSlug) {
-        queryObject.slug = { $regex: safeSlug, $options: "i" };
-      }
-    }
-
-    let products = [];
-    let popularProducts = [];
-    let discountedProducts = [];
-    let relatedProducts = [];
+    let products = [], popularProducts = [], discountedProducts = [], relatedProducts = [];
 
     if (slug) {
-      products = await Product.find(queryObject)
-        .populate({ path: "category", select: "name _id" })
-        .sort({ _id: -1 })
-        .limit(100);
-
+      products = await fetchProducts(queryObject);
       if (products[0]?.category) {
-        relatedProducts = await Product.find({
-          category: products[0].category,
-        }).populate({ path: "category", select: "_id name" });
+        relatedProducts = await fetchProducts({ category: products[0].category });
       }
     } else if (title || category) {
-      products = await Product.find(queryObject)
-        .populate({ path: "category", select: "name _id" })
-        .sort({ _id: -1 })
-        .limit(100);
+      products = await fetchProducts(queryObject);
     } else {
-      popularProducts = await Product.find({ status: "show" })
-        .populate({ path: "category", select: "name _id" })
-        .sort({ sales: -1 })
-        .limit(20);
-
-      discountedProducts = await Product.find({
+      popularProducts = await fetchProducts({ status: "show" }, 20, { sales: -1 });
+      discountedProducts = await fetchProducts({
         status: "show",
-        $or: [
-          {
-            $and: [
-              { isCombination: true },
-              {
-                variants: { $elemMatch: { discount: { $gt: "0.00" } } },
-              },
-            ],
-          },
-        ],
-      })
-        .populate({ path: "category", select: "name _id" })
-        .limit(20);
+        $or: [{ isCombination: true, variants: { $elemMatch: { discount: { $gt: "0.00" } } } }],
+      }, 20);
     }
 
-    res.send({
-      products,
-      popularProducts,
-      discountedProducts,
-      relatedProducts,
-    });
+    res.send({ products, popularProducts, discountedProducts, relatedProducts });
   } catch (err) {
     console.error(err);
-    res.status(500).send({
-      message: `Error retrieving products: ${err.message}`,
-    });
+    res.status(500).send({ message: `Error retrieving products: ${err.message}` });
   }
 };
-
 
 const deleteManyProducts = async (req, res) => {
   try {
