@@ -154,7 +154,7 @@ const getProductBySlug = async (req, res) => {
       return res.status(400).send({ message: "Invalid slug" });
     }
 
-    const sanitizeSlug = (input) => input.replace(/[^\w-]/g, "");
+    const sanitizeSlug = (input) => input.replaceAll(/[^A-Za-z0-9_-]/g, "");
     const safeSlug = sanitizeSlug(slug);
     const product = await Product.findOne({ slug: safeSlug }).lean().exec();
 
@@ -317,25 +317,36 @@ const deleteProduct = (req, res) => {
 const getShowingStoreProducts = async (req, res) => {
   try {
     const queryObject = { status: "show" };
-
     let { category, title, slug } = req.query;
 
+    const sanitizeInput = (input) => {
+      if (typeof input !== "string") return "";
+     
+      return input.replaceAll(/[^\w\s.-]/g, "").trim();
+    };
+
     if (category && typeof category === "string") {
-      queryObject.categories = { $in: [category] };
+      const safeCategory = sanitizeInput(category);
+      if (safeCategory) {
+        queryObject.categories = { $in: [safeCategory] };
+      }
     }
 
     if (title && typeof title === "string") {
-   
-      const safeTitle = title.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
-      const titleQueries = languageCodes.map((lang) => ({
-        [`title.${lang}`]: { $regex: safeTitle, $options: "i" },
-      }));
-      queryObject.$or = titleQueries;
+      const safeTitle = sanitizeInput(title);
+      if (safeTitle) {
+        const titleQueries = languageCodes.map((lang) => ({
+          [`title.${lang}`]: { $regex: safeTitle, $options: "i" },
+        }));
+        queryObject.$or = titleQueries;
+      }
     }
 
     if (slug && typeof slug === "string") {
-      const safeSlug = slug.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
-      queryObject.slug = { $regex: safeSlug, $options: "i" };
+      const safeSlug = sanitizeInput(slug);
+      if (safeSlug) {
+        queryObject.slug = { $regex: safeSlug, $options: "i" };
+      }
     }
 
     let products = [];
@@ -372,42 +383,30 @@ const getShowingStoreProducts = async (req, res) => {
             $and: [
               { isCombination: true },
               {
-                variants: {
-                  $elemMatch: { 
-                    discount: { $gt: "0.00" } },
-                },
-              },
-            ],
-          },
-          {
-            $and: [
-              { isCombination: false },
-              {
-                $expr: {
-                  $gt: [{ $toDouble: "$prices.discount" }, 0],
-                },
+                variants: { $elemMatch: { discount: { $gt: "0.00" } } },
               },
             ],
           },
         ],
       })
         .populate({ path: "category", select: "name _id" })
-        .sort({ _id: -1 })
         .limit(20);
     }
 
-    res.send({ 
+    res.send({
       products,
       popularProducts,
-      relatedProducts, 
       discountedProducts,
-     });
+      relatedProducts,
+    });
   } catch (err) {
-    res.status(500).send({ 
-      message: err.message, 
+    console.error(err);
+    res.status(500).send({
+      message: `Error retrieving products: ${err.message}`,
     });
   }
 };
+
 
 const deleteManyProducts = async (req, res) => {
   try {
