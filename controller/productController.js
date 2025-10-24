@@ -153,7 +153,10 @@ const getProductBySlug = async (req, res) => {
       return res.status(400).send({ message: "Invalid slug" });
     }
 
-    const product = await Product.findOne({ slug }).lean().exec();
+    const safeSlug = slug.trim(); 
+
+  
+    const product = await Product.findOne({ slug: safeSlug }).lean().exec();
 
     if (!product) {
       return res.status(404).send({ message: "Product not found" });
@@ -161,9 +164,7 @@ const getProductBySlug = async (req, res) => {
 
     res.send(product);
   } catch (err) {
-    res.status(500).send({
-      message: `Slug problem, ${err.message}`,
-    });
+    res.status(500).send({ message: `Slug problem: ${err.message}` });
   }
 };
 
@@ -314,31 +315,53 @@ const getShowingStoreProducts = async (req, res) => {
   try {
     const { category, title, slug } = req.query;
 
-    const sanitizeInput = (input) => (typeof input === "string" ? input.replaceAll(/[^\w\s.-]/g, "").trim() : "");
+    const sanitizeInput = (input) =>
+      typeof input === "string" ? input.replaceAll(/[^\w\s.-]/g, "").trim() : "";
+
+    const safeCategory = sanitizeInput(category);
+    const safeTitle = sanitizeInput(title);
+    const safeSlug = sanitizeInput(slug);
 
     const queryObject = { status: "show" };
-    if (sanitizeInput(category)) queryObject.categories = { $in: [sanitizeInput(category)] };
-    if (sanitizeInput(title)) queryObject.$or = languageCodes.map(lang => ({ [`title.${lang}`]: { $regex: sanitizeInput(title), $options: "i" } }));
-    if (sanitizeInput(slug)) queryObject.slug = { $regex: sanitizeInput(slug), $options: "i" };
+    if (safeCategory) queryObject.categories = { $in: [safeCategory] };
+    if (safeTitle) {
+      queryObject.$or = languageCodes.map(lang => ({
+        [`title.${lang}`]: { $regex: safeTitle, $options: "i" }
+      }));
+    }
+    if (safeSlug) queryObject.slug = { $regex: safeSlug, $options: "i" };
 
-    const fetchProducts = async (filter, limit = 100, sort = { _id: -1 }) =>
-      Product.find(filter).populate({ path: "category", select: "name _id" }).sort(sort).limit(limit);
+    const defaultSort = { _id: -1 };
+
+    const fetchProducts = async (filter, limit = 100, sort = defaultSort) =>
+      Product.find(filter)
+        .populate({ path: "category", select: "name _id" })
+        .sort(sort)
+        .limit(limit);
 
     let products = [], popularProducts = [], discountedProducts = [], relatedProducts = [];
 
-    if (slug) {
+    if (safeSlug) {
       products = await fetchProducts(queryObject);
       if (products[0]?.category) {
         relatedProducts = await fetchProducts({ category: products[0].category });
       }
-    } else if (title || category) {
+    } else if (safeTitle || safeCategory) {
       products = await fetchProducts(queryObject);
     } else {
       popularProducts = await fetchProducts({ status: "show" }, 20, { sales: -1 });
-      discountedProducts = await fetchProducts({
-        status: "show",
-        $or: [{ isCombination: true, variants: { $elemMatch: { discount: { $gt: "0.00" } } } }],
-      }, 20);
+      discountedProducts = await fetchProducts(
+        {
+          status: "show",
+          $or: [
+            {
+              isCombination: true,
+              variants: { $elemMatch: { discount: { $gt: "0.00" } } }
+            }
+          ]
+        },
+        20
+      );
     }
 
     res.send({ products, popularProducts, discountedProducts, relatedProducts });
