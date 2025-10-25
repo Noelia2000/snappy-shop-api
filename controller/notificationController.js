@@ -10,7 +10,10 @@ const addNotification = async (req, res) => {
     }
 
     if (productId) {
-      const isAdded = await Notification.findOne({ productId, userId });
+      const isAdded = await Notification.findOne({
+         productId: String(productId).trim(),
+         userId: String(userId).trim(),
+        });
       if (isAdded) {
         return res.status(200).end();
       }
@@ -85,10 +88,10 @@ const updateStatusNotification = async (req, res) => {
 const updateManyStatusNotification = async (req, res) => {
   try {
     await Notification.updateMany(
-      { _id: { $in: req.body.ids } },
+      { _id: { $in: (req.body.ids || []).map(String) } },
       {
         $set: {
-          status: req.body.status,
+          status: String(req.body.status).trim(),
         },
       },
       {
@@ -114,7 +117,7 @@ const deleteNotificationById = async (req, res) => {
       return res.status(400).send({ message: "Invalid ID" });
     }
 
-    const result = await Notification.deleteOne({ _id: id });
+    const result = await Notification.deleteOne({ _id: String(id) });
 
     if (result.deletedCount === 0) {
       return res.status(404).send({ message: "Notification not found" });
@@ -139,7 +142,7 @@ const deleteNotificationByProductId = async (req, res) => {
       return res.status(400).send({ message: "Invalid productId" });
     }
 
-    const result = await Notification.deleteOne({ productId: id });
+    const result = await Notification.deleteOne({ productId: String(id) });
 
     if (result.deletedCount === 0) {
       return res.status(404).send({ message: "Notification not found" });
@@ -163,7 +166,7 @@ const deleteManyNotification = async (req, res) => {
       return res.status(400).send({ message: "Invalid IDs" });
     }
 
-    await Notification.deleteMany({ _id: { $in: ids } });
+    await Notification.deleteMany({ _id: { $in: (ids || []).map(String) } });
 
     res.send({
       message: "Notification Delete Successfully!",
