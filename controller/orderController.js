@@ -10,6 +10,9 @@ const sanitizeNumber = (value, defaultValue = 0) => {
   return Number.isNaN(num) ? defaultValue : num;
 };
 
+const isValidObjectId = (id) =>
+  typeof id === "string" && /^[a-fA-F0-9]{24}$/.test(id.trim());
+
 const buildQueryObject = (query) => {
   const day = sanitizeNumber(query.day);
   const status = sanitizeString(query.status);
@@ -112,7 +115,8 @@ const getAllOrders = async (req, res) => {
 const getOrderCustomer = async (req, res) => {
   try {
     const userId = String(req.params.id).trim();
-    if (!/^[a-fA-F0-9]{24}$/.test(userId)) {
+
+    if (!isValidObjectId(userId)) {
       return res.status(400).send({ message: "Invalid user ID format" });
     }
 
