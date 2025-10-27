@@ -2,7 +2,7 @@ const Order = require("../models/Order");
 
 const sanitizeString = (str) => {
   if (typeof str !== "string") return "";
-  return str.replace(/[^\w\s.-]/gi, ""); 
+  return str.replaceAll(/[^\w\s.-]/gi, "");
 };
 
 const sanitizeNumber = (value, defaultValue = 0) => {
@@ -66,14 +66,24 @@ const calculateMethodTotals = async (queryObject) => {
   }).sort({ updatedAt: -1 });
 
   const totals = [];
+
   for (const order of filteredOrders) {
-    const existing = totals.find((item) => item.method === order.paymentMethod);
+    let existing = null;
+
+    for (const item of totals) {
+      if (item.method === order.paymentMethod) {
+        existing = item;
+        break;
+      }
+    }
+
     if (existing) {
       existing.total += order.total;
     } else {
       totals.push({ method: order.paymentMethod, total: order.total });
     }
   }
+
   return totals;
 };
 
@@ -137,43 +147,52 @@ const getOrderById = async (req, res) => {
   }
 };
 
-const updateOrder = (req, res) => {
-  const newStatus = req.body.status;
-  Order.updateOne(
-    {
-      _id: req.params.id,
-    },
-    {
-      $set: {
-        status: newStatus,
-      },
-    },
-    (err) => {
-      if (err) {
-        res.status(500).send({
-          message: err.message,
-        });
-      } else {
-        res.status(200).send({
-          message: "Order Updated Successfully!",
-        });
-      }
-    },
-  );
+const updateOrder = async (req, res) => {
+  try {
+    const id = String(req.params.id).trim();
+    const newStatus = typeof req.body.status === "string" ? req.body.status.trim() : "";
+
+    if (!/^[a-fA-F0-9]{24}$/.test(id)) {
+      return res.status(400).send({ message: "Invalid order ID format" });
+    }
+
+    if (!newStatus) {
+      return res.status(400).send({ message: "Invalid or empty status" });
+    }
+
+    const result = await Order.updateOne(
+      { _id: id },
+      { $set: { status: newStatus } }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).send({ message: "Order not found" });
+    }
+
+    res.status(200).send({ message: "Order Updated Successfully!" });
+  } catch (err) {
+    res.status(500).send({ message: err.message });
+  }
 };
 
-const deleteOrder = (req, res) => {
-  Order.deleteOne({ _id: req.params.id }, (err) => {
-    if (err) {
-      res.status(500).send({
-        message: err.message,
-      });
-    } else {
-      res.status(200).send({
-        message: "Order Deleted Successfully!",
-      });
+const deleteOrder = async (req, res) => {
+  try {
+    const id = String(req.params.id).trim();
+
+    if (!/^[a-fA-F0-9]{24}$/.test(id)) {
+      return res.status(400).send({ message: "Invalid order ID format" });
     }
-  });
+
+    const result = await Order.deleteOne({ _id: id });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).send({ message: "Order not found" });
+    }
+
+    res.status(200).send({ message: "Order Deleted Successfully!" });
+  } catch (err) {
+    res.status(500).send({ message: err.message });
+  }
 };
 
 // get dashboard recent order
@@ -639,7 +658,11 @@ const getDashboardOrders = async (req, res) => {
 
 const getTotalSoldByProduct = async (req, res) => {
   try {
-    const { productId } = req.params;
+    const productId = String(req.params.productId).trim();
+
+    if (!/^[a-zA-Z0-9_-]+$/.test(productId)) {
+      return res.status(400).json({ message: "Invalid product ID format" });
+    }
 
     const result = await Order.aggregate([
       { $unwind: "$cart" },
