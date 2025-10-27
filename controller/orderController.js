@@ -80,14 +80,14 @@ const calculateMethodTotals = async (queryObject) => {
   const safeQuery = filterAllowedQueryFields(queryObject);
 
   const filteredOrders = await Order.find(safeQuery, {
-    paymentMethod: 1,
-    total: 1,
-  }).sort({ updatedAt: -1 });
+  paymentMethod: 1,
+  total: 1,
+}).sort({ updatedAt: -1 });
 
-  const totals = [];
+const totals = [];
 for (const order of filteredOrders) {
   let existing = null;
-   for (const item of totals) {
+  for (const item of totals) {
     if (item.method === order.paymentMethod) {
       existing = item;
       break;
