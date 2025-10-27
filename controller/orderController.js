@@ -87,7 +87,7 @@ const calculateMethodTotals = async (queryObject) => {
   const totals = [];
 for (const order of filteredOrders) {
   let existing = null;
-  for (const item of totals) {
+   for (const item of totals) {
     if (item.method === order.paymentMethod) {
       existing = item;
       break;
@@ -101,7 +101,7 @@ for (const order of filteredOrders) {
   }
 }
 
-  return totals;
+return totals;
 };
 
 const getAllOrders = async (req, res) => {
