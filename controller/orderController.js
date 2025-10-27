@@ -2,7 +2,7 @@ const Order = require("../models/Order");
 
 const sanitizeString = (str) => {
   if (typeof str !== "string") return "";
-  return str.replace(/[^\w\s.-]/gi, "");
+  return str.replaceAll(String.raw`[^\w\s.-]`, "");
 };
 
 const sanitizeNumber = (value, defaultValue = 0) => {
@@ -38,7 +38,6 @@ const buildQueryObject = (query) => {
     ];
     if (isNumber) customerFilter.push({ invoice: Number(customerName) });
 
-    // Combina con $or existente si ya hay uno
     queryObject.$or = queryObject.$or
       ? queryObject.$or.concat(customerFilter)
       : customerFilter;
@@ -51,13 +50,13 @@ const buildQueryObject = (query) => {
     queryObject.createdAt = { $gte: pastDate, $lte: today };
   }
 
-  if (startDate && endDate) {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    if (!isNaN(start) && !isNaN(end)) {
-      queryObject.updatedAt = { $gt: start, $lt: end };
-    }
+ if (startDate && endDate) {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime())) {
+    queryObject.updatedAt = { $gt: start, $lt: end };
   }
+}
 
   if (method) {
     queryObject.paymentMethod = { $regex: method, $options: "i" };
@@ -70,7 +69,7 @@ const filterAllowedQueryFields = (queryObject) => {
   const allowedFields = ["status", "$or", "createdAt", "updatedAt", "paymentMethod"];
   const safeQuery = {};
   for (const key of allowedFields) {
-    if (Object.prototype.hasOwnProperty.call(queryObject, key)) {
+    if (Object.hasOwn(queryObject, key)) {
       safeQuery[key] = queryObject[key];
     }
   }
@@ -86,14 +85,21 @@ const calculateMethodTotals = async (queryObject) => {
   }).sort({ updatedAt: -1 });
 
   const totals = [];
-  for (const order of filteredOrders) {
-    const existing = totals.find((item) => item.method === order.paymentMethod);
-    if (existing) {
-      existing.total += order.total;
-    } else {
-      totals.push({ method: order.paymentMethod, total: order.total });
+for (const order of filteredOrders) {
+  let existing = null;
+  for (const item of totals) {
+    if (item.method === order.paymentMethod) {
+      existing = item;
+      break;
     }
   }
+
+  if (existing) {
+    existing.total += order.total;
+  } else {
+    totals.push({ method: order.paymentMethod, total: order.total });
+  }
+}
 
   return totals;
 };
