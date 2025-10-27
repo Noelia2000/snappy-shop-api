@@ -136,10 +136,17 @@ const getAllOrders = async (req, res) => {
   }
 };
 
+const isValidId = (...ids) =>
+  ids.every(
+    (id) =>
+      typeof id === "string" &&
+      /^[a-fA-F0-9]{24}$/.test(id.trim())
+  );
+
 const getOrderCustomer = async (req, res) => {
   try {
     const userId = String(req.params.id).trim();
-    if (!/^[a-fA-F0-9]{24}$/.test(userId)) {
+    if (!isValidId(userId)) {
       return res.status(400).send({ message: "Invalid user ID format" });
     }
 
@@ -168,7 +175,7 @@ const updateOrder = async (req, res) => {
     const id = String(req.params.id).trim();
     const newStatus = typeof req.body.status === "string" ? req.body.status.trim() : "";
 
-    if (!/^[a-fA-F0-9]{24}$/.test(id)) {
+    if (!isValidId(id)) { 
       return res.status(400).send({ message: "Invalid order ID format" });
     }
 
@@ -195,7 +202,7 @@ const deleteOrder = async (req, res) => {
   try {
     const id = String(req.params.id).trim();
 
-    if (!/^[a-fA-F0-9]{24}$/.test(id)) {
+  if (!isValidId(id)) {
       return res.status(400).send({ message: "Invalid order ID format" });
     }
 
@@ -676,7 +683,7 @@ const getTotalSoldByProduct = async (req, res) => {
   try {
     const productId = String(req.params.productId).trim();
 
-    if (!/^[a-zA-Z0-9_-]+$/.test(productId)) {
+   if (!isValidId(productId)) {
       return res.status(400).json({ message: "Invalid product ID format" });
     }
 
