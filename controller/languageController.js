@@ -145,8 +145,8 @@ const updateStatus = async (req, res) => {
     }
 
     await Language.updateOne(
-      { _id: id },
-      { $set: { status: status.trim() } }
+      { _id: String(id).trim() },
+      { $set: { status: String(status).trim() } }
     );
 
     res.status(200).send({
@@ -168,7 +168,7 @@ const deleteLanguage = async (req, res) => {
       return res.status(400).send({ message: "Invalid ID format" });
     }
 
-    await Language.deleteOne({ _id: id });
+    await Language.deleteOne({ _id: String(id).trim() });
 
     res.send({
       message: "Delete language successfully!",
